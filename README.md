@@ -4,6 +4,6 @@
 ### Professor: Robert McKenney
 
 ## Team Members
-- Thomas de Haan Carriere
-- Anoop Sidhu
-- Ilyas Zazai
+- Thomas de Haan Carriere GitHub: 
+- Anoop Sidhu GitHub: 
+- Ilyas Zazai GitHub: 
