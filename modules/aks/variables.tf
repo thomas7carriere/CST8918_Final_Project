@@ -27,7 +27,7 @@ variable "vm_size" {
 variable "kubernetes_version" {
   description = "Kubernetes version used by AKS"
   type        = string
-  default     = "1.32"
+  default     = "1.32.11"
 }
 
 variable "enable_auto_scaling" {
