@@ -1,27 +1,44 @@
+# Get the Azure subscription used by GitHub Actions/Terraform.
+# We use it to construct the subnet resource IDs.
+data "azurerm_client_config" "current" {}
+
+locals {
+  # These names match the resources created by infra/network.
+  resource_group_name = "cst8918-final-project-group-7"
+  location            = "canadacentral"
+  vnet_name           = "cst8918-final-vnet"
+
+  # The network root is applied before the platform root.
+  # Therefore these subnet IDs will exist when platform is applied.
+  test_subnet_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${local.resource_group_name}/providers/Microsoft.Network/virtualNetworks/${local.vnet_name}/subnets/test-subnet"
+
+  prod_subnet_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${local.resource_group_name}/providers/Microsoft.Network/virtualNetworks/${local.vnet_name}/subnets/prod-subnet"
+}
+
 # ============================================================
 # AZURE CONTAINER REGISTRY
 # ============================================================
-# Stores the Remix Weather App Docker image.
+# Stores the Remix Weather App container images.
 resource "azurerm_container_registry" "main" {
   name                = "cst8918finalacrgrp7"
-  resource_group_name = data.terraform_remote_state.network.outputs.resource_group_name
-  location            = data.terraform_remote_state.network.outputs.resource_group_location
+  resource_group_name = local.resource_group_name
+  location            = local.location
 
   sku           = "Basic"
   admin_enabled = false
 }
 
 # ============================================================
-# TEST AKS
+# TEST AKS CLUSTER
 # ============================================================
-# One fixed Standard_B2s node as required.
+# Test uses one Standard_B2s worker node.
 module "aks_test" {
   source = "../../modules/aks"
 
   cluster_name        = "cst8918-aks-test"
-  resource_group_name = data.terraform_remote_state.network.outputs.resource_group_name
-  location            = data.terraform_remote_state.network.outputs.resource_group_location
-  subnet_id           = data.terraform_remote_state.network.outputs.test_subnet_id
+  resource_group_name = local.resource_group_name
+  location            = local.location
+  subnet_id           = local.test_subnet_id
 
   kubernetes_version = var.kubernetes_version
   vm_size            = var.aks_vm_size
@@ -31,16 +48,16 @@ module "aks_test" {
 }
 
 # ============================================================
-# PRODUCTION AKS
+# PRODUCTION AKS CLUSTER
 # ============================================================
-# Production cluster autoscaling: minimum 1, maximum 3 nodes.
+# Production automatically scales between 1 and 3 nodes.
 module "aks_prod" {
   source = "../../modules/aks"
 
   cluster_name        = "cst8918-aks-prod"
-  resource_group_name = data.terraform_remote_state.network.outputs.resource_group_name
-  location            = data.terraform_remote_state.network.outputs.resource_group_location
-  subnet_id           = data.terraform_remote_state.network.outputs.prod_subnet_id
+  resource_group_name = local.resource_group_name
+  location            = local.location
+  subnet_id           = local.prod_subnet_id
 
   kubernetes_version = var.kubernetes_version
   vm_size            = var.aks_vm_size
@@ -53,8 +70,8 @@ module "aks_prod" {
 # ============================================================
 # ACR PULL PERMISSIONS
 # ============================================================
-# Allows each AKS kubelet identity to pull images from ACR.
-# Without this, pods may fail with ImagePullBackOff.
+# Give each AKS kubelet identity permission to pull images
+# from the Azure Container Registry.
 resource "azurerm_role_assignment" "acr_pull_test" {
   scope                = azurerm_container_registry.main.id
   role_definition_name = "AcrPull"
@@ -72,8 +89,8 @@ resource "azurerm_role_assignment" "acr_pull_prod" {
 # ============================================================
 resource "azurerm_redis_cache" "test" {
   name                = "cst8918-redis-test-grp7"
-  location            = data.terraform_remote_state.network.outputs.resource_group_location
-  resource_group_name = data.terraform_remote_state.network.outputs.resource_group_name
+  location            = local.location
+  resource_group_name = local.resource_group_name
 
   capacity = 0
   family   = "C"
@@ -88,8 +105,8 @@ resource "azurerm_redis_cache" "test" {
 # ============================================================
 resource "azurerm_redis_cache" "prod" {
   name                = "cst8918-redis-prod-grp7"
-  location            = data.terraform_remote_state.network.outputs.resource_group_location
-  resource_group_name = data.terraform_remote_state.network.outputs.resource_group_name
+  location            = local.location
+  resource_group_name = local.resource_group_name
 
   capacity = 0
   family   = "C"

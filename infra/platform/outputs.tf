@@ -1,5 +1,5 @@
-# Maps are keyed by environment so the application root
-# can select values using test/prod workspace names.
+# Application-facing outputs are maps keyed by environment.
+# Anoop can select them using ["test"] / ["prod"] or workspace.
 
 output "aks_cluster_name" {
   description = "AKS cluster names keyed by environment"
@@ -14,13 +14,13 @@ output "aks_resource_group" {
   description = "AKS resource groups keyed by environment"
 
   value = {
-    test = data.terraform_remote_state.network.outputs.resource_group_name
-    prod = data.terraform_remote_state.network.outputs.resource_group_name
+    test = local.resource_group_name
+    prod = local.resource_group_name
   }
 }
 
 output "acr_login_server" {
-  description = "ACR login server"
+  description = "ACR login server used by the application"
   value       = azurerm_container_registry.main.login_server
 }
 
