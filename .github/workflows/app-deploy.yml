@@ -64,6 +64,11 @@ jobs:
             --vnet-name cst8918-final-vnet \
             -g cst8918-final-project-group-7 \
             --query "[].{name:name, prefix:addressPrefix}" -o table
+      
+      - name: Platform plan
+        run: |
+          terraform -chdir=infra/platform init -input=false
+          terraform -chdir=infra/platform plan -input=false
 
       - name: Resolve environment
         id: env
