@@ -41,7 +41,7 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
       - name: plan
         run: |
-          for d in infra/network infra/platform infra/app; do
+          for d in infra/network infra/platform; do
             if [ -d "$d" ]; then
               echo "== plan $d =="
               terraform -chdir=$d init
