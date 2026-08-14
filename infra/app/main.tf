@@ -25,7 +25,7 @@ provider "azurerm" {
 }
 
 locals {
-  environment = terraform.workspace
+  environment = contains(["test", "prod"], terraform.workspace) ? terraform.workspace : "test"
 
   platform = var.use_remote_state ? {
     aks_cluster_name        = data.terraform_remote_state.platform[0].outputs.aks_cluster_name[local.environment]
