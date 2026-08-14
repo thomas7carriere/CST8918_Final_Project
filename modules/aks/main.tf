@@ -1,11 +1,15 @@
 # Reusable AKS module used for TEST and PROD.
 
+# Standard GitHub-hosted runners use dynamic IP ranges.
+# A fixed API-server allowlist would block the deployment workflow.
+# tfsec:ignore:azure-container-limit-authorized-ips
 resource "azurerm_kubernetes_cluster" "this" {
-  name                = var.cluster_name
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  dns_prefix          = var.cluster_name
-  kubernetes_version  = var.kubernetes_version
+  name                              = var.cluster_name
+  location                          = var.location
+  resource_group_name               = var.resource_group_name
+  dns_prefix                        = var.cluster_name
+  kubernetes_version                = var.kubernetes_version
+  role_based_access_control_enabled = true
 
   default_node_pool {
     name           = "system"
