@@ -45,6 +45,8 @@ module "aks_test" {
 
   enable_auto_scaling = false
   node_count          = 1
+
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.aks.id
 }
 
 # ============================================================
@@ -65,6 +67,8 @@ module "aks_prod" {
   enable_auto_scaling = true
   min_count           = 1
   max_count           = 3
+
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.aks.id
 }
 
 # ============================================================
@@ -114,4 +118,18 @@ resource "azurerm_redis_cache" "prod" {
 
   non_ssl_port_enabled = false
   minimum_tls_version  = "1.2"
+}
+
+# ============================================================
+# LOG ANALYTICS WORKSPACE
+# ============================================================
+# Central monitoring workspace used by both AKS clusters.
+# Container Insights sends cluster logs and monitoring data here.
+resource "azurerm_log_analytics_workspace" "aks" {
+  name                = "cst8918-aks-logs-grp7"
+  location            = local.location
+  resource_group_name = local.resource_group_name
+
+  sku               = "PerGB2018"
+  retention_in_days = 30
 }

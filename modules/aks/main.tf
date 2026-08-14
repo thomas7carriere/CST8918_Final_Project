@@ -1,4 +1,5 @@
-# Reusable AKS module for both test and production environments.
+# Reusable AKS module used for TEST and PROD.
+
 resource "azurerm_kubernetes_cluster" "this" {
   name                = var.cluster_name
   location            = var.location
@@ -11,8 +12,8 @@ resource "azurerm_kubernetes_cluster" "this" {
     vm_size        = var.vm_size
     vnet_subnet_id = var.subnet_id
 
-    # Test uses a fixed node count.
-    # Production uses min/max autoscaling values.
+    # TEST uses one fixed node.
+    # PROD enables autoscaling between min_count and max_count.
     node_count = var.enable_auto_scaling ? null : var.node_count
 
     auto_scaling_enabled = var.enable_auto_scaling
@@ -20,12 +21,21 @@ resource "azurerm_kubernetes_cluster" "this" {
     max_count            = var.enable_auto_scaling ? var.max_count : null
   }
 
-  # Managed identity used by AKS.
+  # AKS uses a managed identity instead of stored credentials.
   identity {
     type = "SystemAssigned"
   }
 
+  # Azure CNI networking with Kubernetes NetworkPolicy enabled.
+  # This satisfies tfsec's network-policy security requirement.
   network_profile {
     network_plugin = "azure"
+    network_policy = "azure"
+  }
+
+  # Send AKS monitoring data to Azure Monitor / Log Analytics.
+  # This satisfies tfsec's AKS logging requirement.
+  oms_agent {
+    log_analytics_workspace_id = var.log_analytics_workspace_id
   }
 }

@@ -53,3 +53,8 @@ variable "max_count" {
   type        = number
   default     = 3
 }
+
+variable "log_analytics_workspace_id" {
+  description = "Log Analytics workspace used by AKS monitoring"
+  type        = string
+}
