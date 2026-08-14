@@ -1,7 +1,7 @@
 variable "kubernetes_version" {
   description = "Kubernetes version required by the project"
   type        = string
-  default     = "1.32.11"
+  default     = "1.34.9"
 }
 
 variable "aks_vm_size" {
