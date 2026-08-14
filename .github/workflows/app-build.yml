@@ -1,0 +1,60 @@
+name: App Build and Push
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-build.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-build.yml'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  RESOURCE_GROUP: cst8918-final-project-group-7
+  IMAGE_NAME: weather-app
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve ACR login server
+        id: acr
+        run: |
+          LOGIN_SERVER=$(az acr list \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "[0].loginServer" -o tsv)
+          if [ -z "$LOGIN_SERVER" ]; then
+            echo "No ACR found in $RESOURCE_GROUP. Has infra/platform been applied?" >&2
+            exit 1
+          fi
+          echo "login_server=$LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+          echo "name=${LOGIN_SERVER%%.*}" >> "$GITHUB_OUTPUT"
+
+      - name: ACR login
+        run: az acr login --name "${{ steps.acr.outputs.name }}"
+
+      - name: Build and push
+        run: |
+          IMAGE="${{ steps.acr.outputs.login_server }}/${IMAGE_NAME}:${GITHUB_SHA}"
+          docker build \
+            --target production \
+            --file app/Dockerfile \
+            --tag "$IMAGE" \
+            app/
+          docker push "$IMAGE"
+          echo "Pushed $IMAGE"
