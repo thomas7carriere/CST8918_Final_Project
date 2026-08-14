@@ -57,6 +57,13 @@ jobs:
           echo "--- everything in the project RG ---"
           az resource list -g cst8918-final-project-group-7 \
             --query "[].{name:name, type:type}" -o table
+      
+      - name: Check subnets
+        run: |
+          az network vnet subnet list \
+            --vnet-name cst8918-final-vnet \
+            -g cst8918-final-project-group-7 \
+            --query "[].{name:name, prefix:addressPrefix}" -o table
 
       - name: Resolve environment
         id: env
