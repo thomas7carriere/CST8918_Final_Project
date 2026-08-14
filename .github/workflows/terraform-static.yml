@@ -1,0 +1,28 @@
+name: Terraform Static Analysis
+
+on:
+  push:
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: fmt
+        run: terraform fmt -check -recursive
+
+      - name: validate each root
+        run: |
+          for d in infra/network infra/platform infra/app; do
+            if [ -d "$d" ]; then
+              echo "== validate $d =="
+              terraform -chdir=$d init -backend=false
+              terraform -chdir=$d validate
+            fi
+          done
+
+      - name: tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
