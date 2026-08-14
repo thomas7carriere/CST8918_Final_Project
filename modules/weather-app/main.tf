@@ -19,8 +19,6 @@ locals {
     "app" = var.app_name
   }
 
-  # The app reads a single REDIS_URL, not host/port/key separately.
-  # See app/data-access/redis-connection.ts.
   redis_url = "rediss://:${var.redis_access_key}@${var.redis_host}:${var.redis_ssl_port}"
 
   namespace = var.create_namespace ? kubernetes_namespace.this[0].metadata[0].name : var.namespace
@@ -35,8 +33,6 @@ resource "kubernetes_namespace" "this" {
   }
 }
 
-# Secrets are held in a Secret rather than inline env values so they are not
-# printed in `kubectl describe deployment`.
 resource "kubernetes_secret" "app" {
   metadata {
     name      = "${var.app_name}-secrets"
@@ -70,8 +66,6 @@ resource "kubernetes_deployment" "app" {
       metadata {
         labels = local.labels
 
-        # Roll the pods whenever the secret changes, so a rotated Redis key or
-        # API key actually reaches the running containers.
         annotations = {
           "checksum/secret" = sha256(jsonencode(kubernetes_secret.app.data))
         }
@@ -115,9 +109,6 @@ resource "kubernetes_deployment" "app" {
             }
           }
 
-          # redis-connection.ts connects with a top-level await, so the module
-          # never finishes loading if Redis is unreachable. Without a probe the
-          # pod sits in Running while serving nothing.
           readiness_probe {
             http_get {
               path = "/"
@@ -162,6 +153,5 @@ resource "kubernetes_service" "app" {
     }
   }
 
-  # The Azure load balancer takes a minute or two to hand out a public IP.
   wait_for_load_balancer = var.service_type == "LoadBalancer"
 }
