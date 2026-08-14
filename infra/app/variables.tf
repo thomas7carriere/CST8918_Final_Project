@@ -1,12 +1,3 @@
-# ---------------------------------------------------------------------------
-# STUBS
-#
-# These four stand in for B's platform outputs. The defaults are fake so that
-# `terraform fmt` and `terraform validate` pass before infra/platform exists.
-# When platform.tfstate lands, delete the defaults and switch the locals in
-# main.tf over to the terraform_remote_state data source.
-# ---------------------------------------------------------------------------
-
 variable "aks_cluster_name" {
   description = "AKS cluster name for this environment. STUB."
   type        = string
@@ -38,9 +29,11 @@ variable "redis_access_key" {
   default     = "stub-access-key"
 }
 
-# ---------------------------------------------------------------------------
-# REAL INPUTS
-# ---------------------------------------------------------------------------
+variable "redis_ssl_port" {
+  description = "Azure Cache for Redis TLS port. STUB."
+  type        = number
+  default     = 6380
+}
 
 variable "image_name" {
   description = "Image repository name within the ACR."
@@ -64,13 +57,6 @@ variable "use_remote_state" {
   type        = bool
   default     = false
 }
-
-# ---------------------------------------------------------------------------
-# PER-ENVIRONMENT SIZING
-#
-# Selected by workspace in main.tf. Test runs a single replica on the one-node
-# cluster; prod runs two.
-# ---------------------------------------------------------------------------
 
 variable "replicas_by_env" {
   description = "Replica count per environment."
