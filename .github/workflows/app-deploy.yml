@@ -1,0 +1,94 @@
+name: App Deploy
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'modules/weather-app/**'
+      - 'infra/app/**'
+      - '.github/workflows/app-deploy.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'modules/weather-app/**'
+      - 'infra/app/**'
+      - '.github/workflows/app-deploy.yml'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  RESOURCE_GROUP: cst8918-final-project-group-7
+  IMAGE_NAME: weather-app
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    environment: ${{ github.event_name == 'pull_request' && 'test' || 'prod' }}
+
+    env:
+      ARM_USE_OIDC: true
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_image_tag: ${{ github.sha }}
+      TF_VAR_weather_api_key: ${{ secrets.WEATHER_API_KEY }}
+      TF_VAR_use_remote_state: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve environment
+        id: env
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            echo "name=test" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=prod" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Wait for image tag in ACR
+        run: |
+          ACR_NAME=$(az acr list \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "[0].name" -o tsv)
+          echo "Waiting for ${IMAGE_NAME}:${GITHUB_SHA} in $ACR_NAME"
+          for i in $(seq 1 30); do
+            if az acr repository show-tags \
+                 --name "$ACR_NAME" \
+                 --repository "$IMAGE_NAME" \
+                 --query "[?@=='${GITHUB_SHA}']" -o tsv | grep -q .; then
+              echo "Image found."
+              exit 0
+            fi
+            echo "  not yet, retry $i/30"
+            sleep 20
+          done
+          echo "Image ${IMAGE_NAME}:${GITHUB_SHA} never appeared. Check App Build." >&2
+          exit 1
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        run: terraform -chdir=infra/app init -input=false
+
+      - name: Select workspace
+        run: |
+          terraform -chdir=infra/app workspace select \
+            -or-create=true "${{ steps.env.outputs.name }}"
+
+      - name: Terraform apply
+        run: terraform -chdir=infra/app apply -auto-approve -input=false
+
+      - name: Show app URL
+        run: terraform -chdir=infra/app output -raw app_url
